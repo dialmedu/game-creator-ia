@@ -1,143 +1,86 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { DukubariCityManager, CITY_TARGETS, type CityTarget } from '@/games/dukubari/DukubariCityManager';
 
-interface DukubariRunnerProps {
-  onExit: () => void;
-}
-
-type Point = { x: number; y: number };
 type Choice = { label: string; result: string };
-type Stage = {
-  id: string;
-  title: string;
-  icon: string;
-  target: string;
-  x: number;
-  y: number;
-  prompt: string;
-  choices: Choice[];
-};
-type Modal = {
-  kind: 'mission' | 'result' | 'victory';
-  title: string;
-  body: string;
-  icon: string;
-  choices?: Choice[];
-} | null;
+type Modal = { kind: 'mission' | 'result' | 'victory'; title: string; body: string; icon: string; choices?: Choice[] } | null;
 
-const stages: Stage[] = [
-  { id: 'identity', title: 'Conseguir una identidad', icon: '🪪', target: 'Funcionario', x: 12, y: 38, prompt: 'El funcionario quiere registrar tu nombre, profesión y opinión. En Dukubari, no tener una opinión es una anomalía.', choices: [{ label: 'Aceptar una identidad oficial', result: 'Resultado invertido: el sistema te registra como ANOMALÍA por aceptar demasiado.' }, { label: 'Rechazar la identidad', result: 'Resultado invertido: el sistema te asigna automáticamente el perfil Ciudadano Perfecto.' }] },
-  { id: 'pet', title: 'Resolver la mascota', icon: '🐾', target: 'Centro de mascotas', x: 25, y: 62, prompt: 'La ciudad exige que declares si quieres una mascota. Tu respuesta será interpretada al revés.', choices: [{ label: 'Adoptar una mascota', result: 'Resultado invertido: la mascota desaparece del registro. Para el sistema nunca existió.' }, { label: 'No adoptar una mascota', result: 'Resultado invertido: aparece una mascota no solicitada y te sigue a todas partes.' }] },
-  { id: 'schedule', title: 'Elegir horario de trabajo', icon: '🕒', target: 'Oficina de horarios', x: 38, y: 38, prompt: 'Debes decidir cuándo trabajar para poder continuar tu vida en la ciudad.', choices: [{ label: 'Trabajar de día', result: 'Resultado invertido: el cielo se vuelve de noche porque tu día acaba de comenzar.' }, { label: 'Trabajar de noche', result: 'Resultado invertido: sale el sol a medianoche para celebrar tu productividad.' }] },
-  { id: 'study', title: 'Estudiar o no estudiar', icon: '🎓', target: 'Centro de educación', x: 51, y: 62, prompt: 'El sistema quiere saber si deseas aprender. Cualquier respuesta será convertida en su opuesto.', choices: [{ label: 'Estudiar', result: 'Resultado invertido: aprendes mucho, pero tu título dice que no sabes nada.' }, { label: 'No estudiar', result: 'Resultado invertido: el sistema te gradúa con honores por no hacer preguntas.' }] },
-  { id: 'marriage', title: 'Decidir sobre el matrimonio', icon: '💍', target: 'Oficina de vínculos', x: 64, y: 38, prompt: 'Una pantalla te pregunta qué tipo de vida deseas compartir.', choices: [{ label: 'Casarse', result: 'Resultado invertido: tu pareja desaparece del registro civil.' }, { label: 'Permanecer soltero', result: 'Resultado invertido: el sistema te asigna una pareja que nunca pediste.' }] },
-  { id: 'work', title: 'Conseguir trabajo', icon: '💼', target: 'Distrito laboral', x: 77, y: 62, prompt: 'Debes elegir cómo sostener tu vida en Dukubari.', choices: [{ label: 'Trabajar', result: 'Resultado invertido: el sistema te declara desempleado por exceso de productividad.' }, { label: 'No trabajar', result: 'Resultado invertido: recibes un cargo de máxima responsabilidad.' }] },
-  { id: 'car', title: 'Decidir sobre el auto', icon: '🚗', target: 'Concesionario', x: 88, y: 38, prompt: 'La ciudad dice que la libertad necesita un vehículo.', choices: [{ label: 'Comprar un auto', result: 'Resultado invertido: recibes un auto que no puede conducirse.' }, { label: 'No comprar un auto', result: 'Resultado invertido: aparece un vehículo asignado con tu nombre.' }] },
-  { id: 'exit', title: 'Salir del mundo al revés', icon: '🚪', target: 'Centro del Orden', x: 95, y: 62, prompt: 'Has cruzado las decisiones de la vida cotidiana. Solo queda decidir qué hacer con la verdad y salir del sistema.', choices: [{ label: 'Abrir todos los archivos', result: 'La verdad queda libre. La ciudad tendrá que decidir por sí misma.' }, { label: 'Apagar el sistema', result: 'El Orden se apaga. Nadie vuelve a decirte qué debes querer.' }, { label: 'Aceptar el Orden', result: 'Te conviertes en el nuevo Director. Ahora tú defines las reglas.' }] },
-];
+const decisions: Record<string, { prompt: string; choices: Choice[] }> = {
+  identity: { prompt: 'Registra tu nombre, profesión y opinión. En Dukubari no tener opinión es una anomalía.', choices: [{ label: 'Aceptar una identidad oficial', result: 'El sistema te registra como ANOMALÍA por aceptar demasiado.' }, { label: 'Rechazar la identidad', result: 'El sistema te asigna automáticamente el perfil Ciudadano Perfecto.' }] },
+  pet: { prompt: 'Declara si quieres una mascota. Tu respuesta será interpretada al revés.', choices: [{ label: 'Adoptar una mascota', result: 'La mascota desaparece del registro. Para el sistema nunca existió.' }, { label: 'No adoptar una mascota', result: 'Aparece una mascota no solicitada y te sigue a todas partes.' }] },
+  schedule: { prompt: 'Elige cuándo trabajar para poder continuar tu vida en la ciudad.', choices: [{ label: 'Trabajar de día', result: 'El cielo se vuelve de noche porque tu día acaba de comenzar.' }, { label: 'Trabajar de noche', result: 'Sale el sol a medianoche para celebrar tu productividad.' }] },
+  study: { prompt: 'El sistema quiere saber si deseas aprender.', choices: [{ label: 'Estudiar', result: 'Aprendes mucho, pero tu título dice que no sabes nada.' }, { label: 'No estudiar', result: 'El sistema te gradúa con honores por no hacer preguntas.' }] },
+  marriage: { prompt: 'Decide qué tipo de vida deseas compartir.', choices: [{ label: 'Casarse', result: 'Tu pareja desaparece del registro civil.' }, { label: 'Permanecer soltero', result: 'El sistema te asigna una pareja que nunca pediste.' }] },
+  work: { prompt: 'Elige cómo sostener tu vida en Dukubari.', choices: [{ label: 'Trabajar', result: 'El sistema te declara desempleado por exceso de productividad.' }, { label: 'No trabajar', result: 'Recibes un cargo de máxima responsabilidad.' }] },
+  car: { prompt: 'La ciudad dice que la libertad necesita un vehículo.', choices: [{ label: 'Comprar un auto', result: 'Recibes un auto que no puede conducirse.' }, { label: 'No comprar un auto', result: 'Aparece un vehículo asignado con tu nombre.' }] },
+  exit: { prompt: 'Has cruzado las decisiones cotidianas. Decide qué hacer con la verdad.', choices: [{ label: 'Abrir todos los archivos', result: 'La verdad queda libre. La ciudad tendrá que decidir por sí misma.' }, { label: 'Apagar el sistema', result: 'El Orden se apaga. Nadie vuelve a decirte qué debes querer.' }, { label: 'Aceptar el Orden', result: 'Te conviertes en el nuevo Director. Ahora tú defines las reglas.' }] },
+};
+
+interface DukubariRunnerProps { onExit: () => void; }
 
 export function DukubariRunner({ onExit }: DukubariRunnerProps) {
-  const [player, setPlayer] = useState<Point>({ x: 7, y: 50 });
-  const [stageIndex, setStageIndex] = useState(0);
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const cityRef = useRef<DukubariCityManager | null>(null);
+  const [targetIndex, setTargetIndex] = useState(0);
   const [completed, setCompleted] = useState<string[]>([]);
-  const [consciousness, setConsciousness] = useState(0);
-  const [worldMode, setWorldMode] = useState<'day' | 'night'>('day');
+  const [nearby, setNearby] = useState<CityTarget | null>(null);
   const [modal, setModal] = useState<Modal>(null);
-  const [nearby, setNearby] = useState(false);
-  const openedStageRef = useRef<string | null>(null);
-  const stage = stages[stageIndex];
+  const [mode, setMode] = useState<'day' | 'night'>('day');
+  const [consciousness, setConsciousness] = useState(0);
+  const target = CITY_TARGETS[targetIndex];
 
-  const checkNearby = useCallback((position: Point) => {
-    setNearby(Math.hypot(stage.x - position.x, stage.y - position.y) < 9);
-  }, [stage]);
+  const openMission = useCallback((currentTarget: CityTarget = target) => {
+    const decision = decisions[currentTarget.id];
+    if (!decision) return;
+    setModal({ kind: 'mission', title: `${currentTarget.icon} ${currentTarget.title}`, icon: currentTarget.icon, body: decision.prompt, choices: decision.choices });
+  }, [target]);
 
   const choose = useCallback((choice: Choice) => {
-    if (stage.id === 'schedule') {
-      setWorldMode(choice.label.includes('día') ? 'night' : 'day');
+    if (target.id === 'schedule') {
+      const nextMode = choice.label.includes('día') ? 'night' : 'day';
+      setMode(nextMode);
+      cityRef.current?.setMode(nextMode);
     }
     setConsciousness((value) => value + 1);
-    setCompleted((items) => [...new Set([...items, stage.id])]);
-    setModal({ kind: 'result', title: 'Consecuencia invertida', icon: '🔄', body: choice.result });
-  }, [stage]);
+    setCompleted((items) => [...new Set([...items, target.id])]);
+    setModal({ kind: 'result', title: '🔄 Consecuencia invertida', icon: '🔄', body: choice.result });
+  }, [target]);
 
-  const openMission = useCallback(() => {
-    if (!nearby) return;
-    setModal({ kind: 'mission', title: stage.title, icon: stage.icon, body: `${stage.prompt}\n\nVe hacia ${stage.icon} ${stage.target}. Lee la decisión y elige una opción.` , choices: stage.choices });
-  }, [nearby, stage]);
-
-  useEffect(() => {
-    openedStageRef.current = null;
-    setNearby(false);
-  }, [stage.id]);
-
-  useEffect(() => {
-    if (nearby && !modal && openedStageRef.current !== stage.id && !completed.includes(stage.id)) {
-      openedStageRef.current = stage.id;
-      setModal({ kind: 'mission', title: stage.title, icon: stage.icon, body: `${stage.prompt}\n\nMisión: llega al objetivo y decide cómo continuar.`, choices: stage.choices });
-    }
-  }, [completed, modal, nearby, stage]);
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      const key = event.key.toLowerCase();
-      if (key === 'enter') { event.preventDefault(); openMission(); return; }
-      const directions: Record<string, Point> = {
-        w: { x: 0, y: -1 }, a: { x: -1, y: 0 }, s: { x: 0, y: 1 }, d: { x: 1, y: 0 },
-        arrowup: { x: 0, y: -1 }, arrowleft: { x: -1, y: 0 }, arrowdown: { x: 0, y: 1 }, arrowright: { x: 1, y: 0 },
-      };
-      if (!directions[key]) return;
-      event.preventDefault();
-      setPlayer((current) => {
-        const next = { x: Math.max(5, Math.min(97, current.x + directions[key].x * 2)), y: Math.max(20, Math.min(82, current.y + directions[key].y * 2)) };
-        checkNearby(next);
-        return next;
-      });
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [checkNearby, openMission]);
-
-  const direction = useMemo(() => {
-    if (Math.abs(stage.x - player.x) > 7) return stage.x > player.x ? '➡️ Ve hacia la derecha' : '⬅️ Ve hacia la izquierda';
-    if (Math.abs(stage.y - player.y) > 7) return stage.y > player.y ? '⬇️ Ve hacia abajo' : '⬆️ Ve hacia arriba';
-    return '📍 Estás en el objetivo';
-  }, [player, stage]);
-  const progress = Math.round((completed.length / stages.length) * 100);
-  const missionRead = completed.includes(stage.id);
-
-  const nextStage = () => {
-    setModal(null);
-    if (stageIndex === stages.length - 1) {
-      setModal({ kind: 'victory', title: 'Has sobrevivido a Dukubari', icon: '🏆', body: `Has salido del mundo al revés. Conciencia obtenida: ${consciousness}. Tus decisiones no eran correctas o incorrectas: eran pruebas para descubrir quién decide por ti.` });
+  const advance = () => {
+    if (targetIndex >= CITY_TARGETS.length - 1) {
+      setModal({ kind: 'victory', title: '🏆 Has sobrevivido a Dukubari', icon: '🏆', body: `Has salido del mundo al revés. Conciencia: ${consciousness}. Ahora puedes elegir qué reglas crear.` });
       return;
     }
-    setStageIndex((value) => value + 1);
-    setPlayer({ x: 7, y: 50 });
+    const next = targetIndex + 1;
+    setTargetIndex(next);
+    cityRef.current?.setTargetIndex(next);
+    setNearby(null);
+    setModal(null);
   };
 
+  useEffect(() => {
+    if (!canvasRef.current || cityRef.current) return;
+    const city = new DukubariCityManager({ root: canvasRef.current, onTargetEnter: (currentTarget) => { setNearby(currentTarget); }, onPositionChange: () => undefined });
+    cityRef.current = city;
+    city.start().catch((error) => console.error('No se pudo iniciar Dukubari:', error));
+    return () => { city.stop(); cityRef.current = null; };
+  }, []);
+
+  const direction = useMemo(() => {
+    if (!nearby) return `Ve hacia ${target.icon} ${target.title}`;
+    return `📍 ${nearby.title} alcanzado · ENTER`;
+  }, [nearby, target]);
+
   return (
-    <div className={`fixed inset-0 overflow-hidden transition-colors duration-700 ${worldMode === 'night' ? 'bg-[#101a3a]' : 'bg-[#e7f4ef]'}`}>
-      <div className={`absolute inset-0 ${worldMode === 'night' ? 'bg-[radial-gradient(circle_at_50%_20%,#405080,#101a3a_65%,#080d20)]' : 'bg-[radial-gradient(circle_at_50%_20%,#ffffff,#d6eee6_55%,#9dccbe)]'}`} />
-      <header className="absolute left-3 right-3 top-3 z-30 flex items-start justify-between gap-3">
-        <div className="rounded-2xl border border-emerald-200 bg-white/90 px-4 py-3 shadow-lg"><p className="text-[10px] font-bold uppercase tracking-[0.25em] text-emerald-700">🏙️ DUKUBARI · RUTA DE SUPERVIVENCIA</p><h1 className="text-lg font-black md:text-2xl">Elige. Sobrevive. Descubre.</h1><p className="text-xs text-slate-500">Progreso: {progress}% · {worldMode === 'night' ? '🌙 mundo nocturno' : '☀️ mundo diurno'}</p></div>
-        <div className="flex items-center gap-2"><div className="rounded-2xl bg-slate-950/90 px-3 py-2 text-xs font-bold text-white shadow-lg">💡 {consciousness}</div><button onClick={onExit} className="rounded-2xl border border-slate-300 bg-white/90 px-3 py-2 text-xs font-bold shadow-lg">Salir</button></div>
+    <div className="fixed inset-0 overflow-hidden bg-slate-950">
+      <div ref={canvasRef} className="absolute inset-0 z-0" />
+      <header className="absolute left-3 right-3 top-3 z-20 flex items-start justify-between gap-3">
+        <div className="rounded-2xl border border-emerald-300/40 bg-slate-950/90 px-4 py-3 text-white shadow-xl"><p className="text-[10px] font-bold uppercase tracking-[0.25em] text-emerald-300">🏙️ DUKUBARI · CIUDAD KABOOM</p><h1 className="text-lg font-black md:text-2xl">Elige. Sobrevive. Descubre.</h1><p className="text-xs text-slate-300">{mode === 'night' ? '🌙 modo noche invertido' : '☀️ modo día'} · 💡 Conciencia: {consciousness}</p></div>
+        <button onClick={onExit} className="rounded-xl bg-slate-950/90 px-4 py-2 text-xs font-bold text-white shadow-xl">Salir</button>
       </header>
-
-      <section className="absolute left-3 right-3 top-32 z-20 rounded-2xl border border-white/70 bg-white/90 p-3 shadow-xl">
-        <div className="relative flex items-center justify-between gap-1 md:gap-3">
-          <div className="absolute left-3 right-3 top-7 h-1 bg-slate-200" /><div className="absolute left-3 top-7 h-1 bg-emerald-400 transition-all" style={{ width: `${Math.max(0, progress)}%` }} />
-          {stages.map((item, index) => <div key={item.id} className="relative z-10 flex min-w-0 flex-1 flex-col items-center"><div className={`flex h-12 w-12 items-center justify-center rounded-full border-4 text-xl shadow ${index === stageIndex ? 'border-amber-400 bg-amber-100 ring-4 ring-amber-300/40' : completed.includes(item.id) ? 'border-emerald-500 bg-emerald-100' : 'border-slate-300 bg-slate-100'}`}>{completed.includes(item.id) ? '✅' : item.icon}</div><span className="mt-1 hidden max-w-20 truncate text-[9px] font-bold text-slate-600 sm:block">{item.target}</span>{index === stageIndex && <span className="absolute -top-5 animate-bounce text-lg">⬇️</span>}</div>)}
-        </div>
-      </section>
-
-      <main className="absolute inset-x-0 bottom-0 top-56 z-10"><div className="absolute inset-x-0 bottom-0 h-1/2 border-t-8 border-emerald-700/30 bg-emerald-200/50" /><div className="absolute left-1/2 top-8 -translate-x-1/2 rounded-xl border-4 border-slate-700 bg-slate-900 px-4 py-2 text-center text-white shadow-xl"><p className="text-2xl">📺</p><p className="text-[10px] font-black tracking-widest">TODO FUNCIONA COMO DEBE</p></div>
-        <div className="absolute -translate-x-1/2 -translate-y-1/2 transition-all duration-100" style={{ left: `${player.x}%`, top: `${player.y}%` }}><div className="flex h-12 w-12 items-center justify-center rounded-full border-4 border-white bg-emerald-600 text-2xl shadow-xl">🧑</div><span className="absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-950 px-2 py-1 text-[9px] font-bold text-white">DESCONOCIDO</span></div>
-        <div className="absolute -translate-x-1/2 -translate-y-1/2 text-center" style={{ left: `${stage.x}%`, top: `${stage.y}%` }}><div className={`flex h-20 w-20 items-center justify-center rounded-full border-4 bg-amber-100 text-4xl shadow-xl ${nearby ? 'border-amber-400 ring-8 ring-amber-300/40' : 'border-white'}`}>{stage.icon}</div><p className="mt-2 whitespace-nowrap rounded-lg bg-white/90 px-3 py-1 text-xs font-black shadow">{stage.target}</p><p className="mt-1 text-xs font-black text-amber-700">OBJETIVO</p></div>
-      </main>
-
-      <aside className="absolute bottom-4 left-3 z-30 w-72 rounded-2xl bg-slate-950/90 p-4 text-white shadow-xl"><p className="text-[10px] font-bold uppercase tracking-widest text-emerald-300">🎯 Misión activa</p><p className="mt-1 text-sm font-black">{stage.icon} {stage.title}</p><p className="mt-2 text-xs text-amber-200">{direction}</p><p className="mt-2 text-[10px] text-slate-400">WASD mover · ENTER interactuar</p></aside>
-      <div className="absolute bottom-5 right-4 z-30 flex gap-2">{!missionRead && <button onClick={openMission} className="rounded-full bg-amber-500 px-5 py-4 text-xs font-black text-slate-950 shadow-xl">{stage.icon} ENTER</button>}<button onClick={() => setModal({ kind: 'mission', title: stage.title, icon: stage.icon, body: stage.prompt, choices: missionRead ? undefined : stage.choices })} className="rounded-full bg-slate-950 px-4 py-4 text-xs font-black text-white shadow-xl">📜 Misión</button></div>
-
-      {modal && <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm"><div className="w-full max-w-lg rounded-3xl bg-slate-950 p-6 text-white shadow-2xl"><p className="text-4xl">{modal.icon}</p><h2 className="mt-2 text-2xl font-black">{modal.title}</h2><p className="mt-4 whitespace-pre-line text-sm leading-7 text-slate-200">{modal.body}</p>{modal.choices && <div className="mt-5 grid gap-2">{modal.choices.map((choice) => <button key={choice.label} onClick={() => choose(choice)} className="rounded-xl border border-emerald-400/30 bg-emerald-500/15 px-4 py-3 text-left text-sm font-bold text-emerald-100 hover:bg-emerald-500/30">{choice.label}</button>)}</div>}{!modal.choices && <button onClick={modal.kind === 'result' ? nextStage : () => setModal(null)} className="mt-6 w-full rounded-xl bg-emerald-500 py-3 text-sm font-black text-slate-950">{modal.kind === 'result' ? 'Desbloquear siguiente objetivo →' : modal.kind === 'victory' ? 'Volver a la plataforma' : 'Cerrar misión'}</button>}</div></div>}
+      <section className="absolute left-3 right-3 top-28 z-20 rounded-2xl border border-white/20 bg-slate-950/90 p-3 text-white shadow-xl"><div className="mb-2 flex justify-between text-xs font-bold"><span>🧭 Ruta de supervivencia</span><span>{completed.length}/{CITY_TARGETS.length}</span></div><div className="flex gap-1">{CITY_TARGETS.map((item, index) => <div key={item.id} className={`h-2 flex-1 rounded-full ${completed.includes(item.id) ? 'bg-emerald-400' : index === targetIndex ? 'bg-amber-400 animate-pulse' : 'bg-slate-700'}`} />)}</div><p className="mt-2 text-xs text-amber-200">⬇️ Objetivo: {target.icon} {target.title} · {direction}</p></section>
+      <aside className="absolute bottom-4 left-3 z-20 w-72 rounded-2xl bg-slate-950/90 p-4 text-white shadow-xl"><p className="text-[10px] font-bold uppercase tracking-widest text-emerald-300">🎯 Misión activa</p><p className="mt-1 text-sm font-black">{target.icon} {target.title}</p><p className="mt-2 text-xs text-slate-300">{direction}</p><p className="mt-2 text-[10px] text-slate-400">WASD mover · ENTER interactuar</p></aside>
+      <div className="absolute bottom-5 right-4 z-30 flex gap-2">{nearby && <button onClick={() => openMission(nearby)} className="rounded-full bg-amber-400 px-5 py-4 text-xs font-black text-slate-950 shadow-xl">{nearby.icon} ENTER</button>}<button onClick={() => openMission()} className="rounded-full bg-slate-950 px-4 py-4 text-xs font-black text-white shadow-xl">📜 Misión</button></div>
+      {modal && <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm"><div className="w-full max-w-lg rounded-3xl bg-slate-950 p-6 text-white shadow-2xl"><p className="text-4xl">{modal.icon}</p><h2 className="mt-2 text-2xl font-black">{modal.title}</h2><p className="mt-4 whitespace-pre-line text-sm leading-7 text-slate-200">{modal.body}</p>{modal.choices && <div className="mt-5 grid gap-2">{modal.choices.map((choice) => <button key={choice.label} onClick={() => choose(choice)} className="rounded-xl border border-emerald-400/30 bg-emerald-500/15 px-4 py-3 text-left text-sm font-bold text-emerald-100 hover:bg-emerald-500/30">{choice.label}</button>)}</div>}{!modal.choices && <button onClick={modal.kind === 'result' ? advance : modal.kind === 'victory' ? onExit : () => setModal(null)} className="mt-6 w-full rounded-xl bg-emerald-500 py-3 text-sm font-black text-slate-950">{modal.kind === 'result' ? 'Desbloquear siguiente objetivo →' : modal.kind === 'victory' ? 'Volver a la plataforma' : 'Cerrar misión'}</button>}</div></div>}
     </div>
   );
 }
