@@ -4,6 +4,7 @@ import { useI18n } from '@/i18n';
 import { getGame } from '@/registry/gameRegistry';
 import { GameRunner } from './GameRunner';
 import { DukubariRunner } from './DukubariRunner';
+import { GameStartModal } from './GameStartModal';
 
 interface GamePageProps {
   gameId: string;
@@ -14,6 +15,7 @@ export function GamePage({ gameId, onBack }: GamePageProps) {
   const { t } = useI18n();
   const gameDef = getGame(gameId);
   const [mounted, setMounted] = useState(false);
+  const [started, setStarted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -48,7 +50,8 @@ export function GamePage({ gameId, onBack }: GamePageProps) {
         </span>
       </div>
 
-      {mounted && (gameId === 'dukubari' ? <DukubariRunner onExit={onBack} /> : <GameRunner gameId={gameId} onExit={onBack} />)}
+      {started && mounted && (gameId === 'dukubari' ? <DukubariRunner onExit={onBack} /> : <GameRunner gameId={gameId} onExit={onBack} />)}
+      {!started && <GameStartModal gameTitle={gameDef.title} onStart={() => setStarted(true)} />}
     </div>
   );
 }
