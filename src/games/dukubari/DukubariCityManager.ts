@@ -16,8 +16,17 @@ interface CityManagerOptions {
   onPositionChange: (position: CityPoint) => void;
 }
 
-const BUILDINGS_URL = `${import.meta.env.BASE_URL}assets/dukubari/spinter_edificios_png.png`;
-const CHARACTER_URL = `${import.meta.env.BASE_URL}assets/dukubari/spinter_personaje_png.png`;
+const ASSET_BASE = `${import.meta.env.BASE_URL}assets/dukubari/`;
+const BUILDING_ASSETS = {
+  normal: `${ASSET_BASE}edificio_normal.png`,
+  double: `${ASSET_BASE}edificio_doble.png`,
+  large: `${ASSET_BASE}edificio_grande.png`,
+};
+const CHARACTER_ASSETS = {
+  idle: `${ASSET_BASE}personaje_main.png`,
+  left: `${ASSET_BASE}personaje_main_left.png`,
+  right: `${ASSET_BASE}personaje_main_rigth.png`,
+};
 
 export const CITY_TARGETS: CityTarget[] = [
   { id: 'identity', title: 'Funcionario', icon: '🪪', position: { x: 420, y: 330 } },
@@ -34,6 +43,7 @@ export class DukubariCityManager {
   private readonly k: any;
   private readonly options: CityManagerOptions;
   private player: any;
+  private currentPlayerSprite = 'dukubari-player-idle';
   private direction = { x: 0, y: 0 };
   private mode: CityMode = 'day';
   private targetIndex = 0;
@@ -83,8 +93,12 @@ export class DukubariCityManager {
 
   private async loadAssets(): Promise<void> {
     try {
-      this.k.loadSprite('dukubari-buildings', BUILDINGS_URL, { sliceX: 8, sliceY: 6 });
-      this.k.loadSprite('dukubari-character', CHARACTER_URL, { sliceX: 5, sliceY: 3 });
+      this.k.loadSprite('dukubari-building-normal', BUILDING_ASSETS.normal);
+      this.k.loadSprite('dukubari-building-double', BUILDING_ASSETS.double);
+      this.k.loadSprite('dukubari-building-large', BUILDING_ASSETS.large);
+      this.k.loadSprite('dukubari-player-idle', CHARACTER_ASSETS.idle);
+      this.k.loadSprite('dukubari-player-left', CHARACTER_ASSETS.left);
+      this.k.loadSprite('dukubari-player-right', CHARACTER_ASSETS.right);
       await Promise.resolve();
     } catch (error) {
       console.warn('Dukubari sprites no disponibles; usando fallback:', error);
@@ -101,32 +115,56 @@ export class DukubariCityManager {
       k.add([k.rect(12, mapHeight), k.pos(x + 69, 0), k.color(225, 225, 190), k.z(-9)]);
     }
     for (let x = 0; x < mapWidth; x += 400) {
-      this.addBuilding(x + 125, 250, 16);
-      this.addBuilding(x + 300, 680, 32);
+      this.addBuilding(x + 125, 250, 'normal');
+      this.addBuilding(x + 300, 680, x % 800 === 0 ? 'large' : 'double');
     }
     CITY_TARGETS.forEach((target, index) => {
-      this.addBuilding(target.position.x, target.position.y - 80, index % 2 === 0 ? 16 : 24);
+      const buildingType = index === CITY_TARGETS.length - 1 ? 'large' : index % 2 === 0 ? 'double' : 'normal';
+      this.addBuilding(target.position.x, target.position.y - 80, buildingType);
       k.add([k.text(`${target.icon} ${target.title}`, { size: 18 }), k.pos(target.position.x, target.position.y - 145), k.anchor('center'), k.color(255, 255, 255), k.outline(4, k.rgb(15, 23, 42)), k.z(10)]);
     });
     this.player = this.addPlayer();
     k.camPos(this.player.pos);
   }
 
-  private addBuilding(x: number, y: number, frame: number): void {
-    const k = this.k;
+  private addBuilding(x: number, y: number, type: 'normal' | 'double' | 'large'): void {
+    const spriteName = `dukubari-building-${type}`;
+    const size = type === 'large' ? 230 : type === 'double' ? 190 : 155;
     try {
-      k.add([k.sprite('dukubari-buildings', { frame }), k.pos(x, y), k.anchor('center'), k.z(1)]);
+      this.k.add([
+        this.k.sprite(spriteName, { width: size, height: size }),
+        this.k.pos(x, y),
+        this.k.anchor('center'),
+        this.k.z(1),
+      ]);
     } catch {
-      k.add([k.rect(150, 120), k.pos(x, y), k.anchor('center'), k.color(120, 150, 170), k.outline(3, k.rgb(255, 255, 255)), k.z(1)]);
+      this.k.add([this.k.rect(size, size * 0.75), this.k.pos(x, y), this.k.anchor('center'), this.k.color(120, 150, 170), this.k.outline(3, this.k.rgb(255, 255, 255)), this.k.z(1)]);
     }
   }
 
   private addPlayer(): any {
-    const k = this.k;
     try {
-      return k.add([k.sprite('dukubari-character', { frame: this.mode === 'day' ? 0 : 3 }), k.pos(160, 480), k.anchor('center'), k.area(), k.z(5), 'player']);
+      return this.k.add([
+        this.k.sprite(this.currentPlayerSprite, { width: 96, height: 96 }),
+        this.k.pos(160, 480),
+        this.k.anchor('center'),
+        this.k.area(),
+        this.k.z(5),
+        'player',
+      ]);
     } catch {
-      return k.add([k.rect(42, 62), k.pos(160, 480), k.anchor('center'), k.color(45, 110, 190), k.area(), k.z(5), 'player']);
+      return this.k.add([this.k.rect(42, 62), this.k.pos(160, 480), this.k.anchor('center'), this.k.color(45, 110, 190), this.k.area(), this.k.z(5), 'player']);
+    }
+  }
+
+  private updatePlayerSprite(): void {
+    const nextSprite = this.direction.x < 0 ? 'dukubari-player-left' : this.direction.x > 0 ? 'dukubari-player-right' : 'dukubari-player-idle';
+    if (!this.player || nextSprite === this.currentPlayerSprite) return;
+    this.currentPlayerSprite = nextSprite;
+    try {
+      this.player.use(this.k.sprite(nextSprite, { width: 96, height: 96 }));
+    } catch {
+      // Keep the previous sprite if an image is unavailable.
     }
   }
 
@@ -144,6 +182,7 @@ export class DukubariCityManager {
   private update(): void {
     if (this.disposed || !this.player) return;
     const speed = 240;
+    this.updatePlayerSprite();
     this.player.move(this.direction.x * speed, this.direction.y * speed);
     this.player.pos.x = Math.max(80, Math.min(3450, this.player.pos.x));
     this.player.pos.y = Math.max(160, Math.min(760, this.player.pos.y));

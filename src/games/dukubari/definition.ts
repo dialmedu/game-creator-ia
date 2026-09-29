@@ -2,9 +2,9 @@ import type { GameDefinition } from '@/core/types';
 
 export const dukubari: GameDefinition = {
   id: 'dukubari',
-  title: 'Dukubari',
+  title: 'Ciudad al revés',
   description:
-    'Aventura narrativa sobre identidad, conformismo y una ciudad donde todo funciona como debe.',
+    'Aventura narrativa en una ciudad donde cada decisión produce el resultado contrario.',
   framework: 'react',
   icon: 'Eye',
   category: 'aventura narrativa',
