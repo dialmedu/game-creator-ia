@@ -48,6 +48,8 @@ export class DukubariCityManager {
   private mode: CityMode = 'day';
   private targetIndex = 0;
   private disposed = false;
+  private targetArrow: any;
+  private validPathPoints: CityPoint[] = [];
 
   constructor(options: CityManagerOptions) {
     this.options = options;
@@ -109,22 +111,43 @@ export class DukubariCityManager {
     const k = this.k;
     const mapWidth = 3600;
     const mapHeight = 900;
-    k.add([k.rect(mapWidth, mapHeight), k.pos(0, 0), k.color(135, 190, 150), k.z(-20)]);
-    for (let x = 0; x < mapWidth; x += 400) {
-      k.add([k.rect(150, mapHeight), k.pos(x, 0), k.color(75, 82, 88), k.z(-10)]);
-      k.add([k.rect(12, mapHeight), k.pos(x + 69, 0), k.color(225, 225, 190), k.z(-9)]);
-    }
-    for (let x = 0; x < mapWidth; x += 400) {
-      this.addBuilding(x + 125, 250, 'normal');
-      this.addBuilding(x + 300, 680, x % 800 === 0 ? 'large' : 'double');
-    }
+    k.add([k.rect(mapWidth, mapHeight), k.pos(0, 0), k.color(248, 250, 249), k.z(-20)]);
+    this.drawCityRoads();
     CITY_TARGETS.forEach((target, index) => {
       const buildingType = index === CITY_TARGETS.length - 1 ? 'large' : index % 2 === 0 ? 'double' : 'normal';
-      this.addBuilding(target.position.x, target.position.y - 80, buildingType);
-      k.add([k.text(`${target.icon} ${target.title}`, { size: 18 }), k.pos(target.position.x, target.position.y - 145), k.anchor('center'), k.color(255, 255, 255), k.outline(4, k.rgb(15, 23, 42)), k.z(10)]);
+      this.addBuilding(target.position.x, target.position.y, buildingType);
+      k.add([k.text(`${target.icon} ${target.title}`, { size: 18 }), k.pos(target.position.x, target.position.y - 125), k.anchor('center'), k.color(30, 41, 59), k.outline(4, k.rgb(255, 255, 255)), k.z(10)]);
     });
+    this.targetArrow = k.add([k.text('↓', { size: 42 }), k.pos(CITY_TARGETS[0].position.x, CITY_TARGETS[0].position.y - 175), k.anchor('center'), k.color(245, 158, 11), k.z(12)]);
     this.player = this.addPlayer();
     k.camPos(this.player.pos);
+  }
+
+  private drawCityRoads(): void {
+    const k = this.k;
+    const points = [{ x: 160, y: 480 }, ...CITY_TARGETS.map((target) => target.position)];
+    this.validPathPoints = points;
+    for (let index = 0; index < points.length - 1; index += 1) {
+      const from = points[index];
+      const to = points[index + 1];
+      const horizontalWidth = Math.abs(to.x - from.x);
+      const horizontalX = Math.min(from.x, to.x) + horizontalWidth / 2;
+      k.add([k.rect(horizontalWidth + 90, 90), k.pos(horizontalX, from.y), k.anchor('center'), k.color(203, 213, 225), k.outline(2, k.rgb(148, 163, 184)), k.z(-10)]);
+      const verticalHeight = Math.abs(to.y - from.y);
+      if (verticalHeight > 0) {
+        k.add([k.rect(90, verticalHeight + 90), k.pos(to.x, Math.min(from.y, to.y) + verticalHeight / 2), k.anchor('center'), k.color(203, 213, 225), k.outline(2, k.rgb(148, 163, 184)), k.z(-10)]);
+      }
+    }
+  }
+
+  private isOnCityPath(position: CityPoint): boolean {
+    return this.validPathPoints.some((point, index) => {
+      const next = this.validPathPoints[index + 1];
+      if (!next) return Math.hypot(position.x - point.x, position.y - point.y) < 65;
+      const horizontalDistance = Math.abs(position.y - point.y) < 55 && position.x >= Math.min(point.x, next.x) - 55 && position.x <= Math.max(point.x, next.x) + 55;
+      const verticalDistance = Math.abs(position.x - next.x) < 55 && position.y >= Math.min(point.y, next.y) - 55 && position.y <= Math.max(point.y, next.y) + 55;
+      return horizontalDistance || verticalDistance;
+    });
   }
 
   private addBuilding(x: number, y: number, type: 'normal' | 'double' | 'large'): void {
@@ -186,6 +209,15 @@ export class DukubariCityManager {
     this.player.move(this.direction.x * speed, this.direction.y * speed);
     this.player.pos.x = Math.max(80, Math.min(3450, this.player.pos.x));
     this.player.pos.y = Math.max(160, Math.min(760, this.player.pos.y));
+    if (!this.isOnCityPath(this.player.pos)) {
+      this.player.pos.x -= this.direction.x * speed;
+      this.player.pos.y -= this.direction.y * speed;
+    }
+    const activeTarget = CITY_TARGETS[this.targetIndex];
+    if (this.targetArrow && activeTarget) {
+      this.targetArrow.pos = this.k.vec2(activeTarget.position.x, activeTarget.position.y - 175);
+      this.targetArrow.opacity = Math.sin(Date.now() / 180) > 0 ? 1 : 0.25;
+    }
     this.k.camPos(this.player.pos);
     this.options.onPositionChange({ x: this.player.pos.x, y: this.player.pos.y });
     const target = CITY_TARGETS[this.targetIndex];
