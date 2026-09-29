@@ -105,14 +105,14 @@ export function Landing({ onOpenGame }: LandingProps) {
             {t.hero.badge}
           </div>
 
-          <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-3">
-            {t.hero.title}
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-3 animate-[pulse_4s_ease-in-out_infinite]">
+            Creamos juegos para ti
           </h1>
           <p className="text-xl text-emerald-300/70 font-light mb-6 tracking-wide">
-            {t.hero.subtitle}
+            De tu idea a una experiencia jugable
           </p>
           <p className="text-slate-300 text-base md:text-lg leading-relaxed mb-10 max-w-xl mx-auto">
-            {t.hero.description}
+            Explora una demo ahora o cuéntanos tu idea para crear un juego a tu medida. No necesitas iniciar sesión ni crear una cuenta para comenzar.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -124,10 +124,10 @@ export function Landing({ onOpenGame }: LandingProps) {
               <ArrowRight className="w-4 h-4" />
             </button>
             <button
-              onClick={() => scrollToSection('games')}
+              onClick={() => scrollToSection('create')}
               className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-semibold transition-all active:scale-95 cursor-pointer"
             >
-              {t.hero.secondaryCta}
+              Quiero crear mi juego
             </button>
           </div>
         </div>
@@ -166,8 +166,8 @@ export function Landing({ onOpenGame }: LandingProps) {
       <section id="games" className="py-20 px-6 bg-slate-950/50">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-3">{t.gamesSection.title}</h2>
-            <p className="text-slate-400 text-sm">{t.gamesSection.subtitle}</p>
+            <h2 className="text-3xl md:text-4xl font-bold mb-3">Prueba un juego ahora</h2>
+            <p className="text-slate-400 text-sm">Entra directamente: no necesitas registrarte.</p>
           </div>
 
           {loading ? (
@@ -214,7 +214,7 @@ export function Landing({ onOpenGame }: LandingProps) {
                     onClick={() => onOpenGame(game.id)}
                     className="mt-4 w-full flex items-center justify-center gap-1 text-emerald-400 text-xs font-bold bg-emerald-600/10 hover:bg-emerald-600/20 py-2.5 rounded-xl transition cursor-pointer"
                   >
-                    {t.gamesSection.play}
+                    Jugar ahora — sin iniciar sesión
                     <ExternalLink className="w-3 h-3" />
                   </button>
                 </div>
@@ -290,11 +290,11 @@ export function Landing({ onOpenGame }: LandingProps) {
         <div className="max-w-6xl mx-auto text-center">
           <div className="flex items-center justify-center gap-2 mb-3">
             <Gamepad2 className="w-5 h-5 text-emerald-400" />
-            <span className="font-bold">Imperium Games</span>
+            <span className="font-bold">Creamos juegos para ti</span>
           </div>
           <p className="text-xs text-slate-500 mb-1">{t.footer.tagline}</p>
           <p className="text-xs text-slate-600">
-            &copy; {new Date().getFullYear()} Imperium Games. {t.footer.rights}
+            &copy; {new Date().getFullYear()} Creamos juegos para ti. {t.footer.rights}
           </p>
         </div>
       </footer>

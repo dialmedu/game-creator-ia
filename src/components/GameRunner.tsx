@@ -17,6 +17,7 @@ import { LogsContent } from './modal-contents/LogsContent';
 import { MinimapContent } from './modal-contents/MinimapContent';
 import { BuildingContent } from './modal-contents/BuildingContent';
 import { DialogueContent } from './modal-contents/DialogueContent';
+import { HelpContent } from './modal-contents/HelpContent';
 
 interface GameRunnerProps {
   gameId: string;
@@ -217,6 +218,7 @@ export function GameRunner({ gameId, onExit }: GameRunnerProps) {
 
       {/* Modals */}
       <GameModal state={modal} onClose={() => setModal({ type: 'none' })}>
+        {modal.type === 'help' && <HelpContent />}
         {modal.type === 'menu' && gameState && (
           <MenuContent
             state={gameState}

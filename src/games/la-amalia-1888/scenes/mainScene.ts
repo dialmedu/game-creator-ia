@@ -1,6 +1,17 @@
 import type { LaAmaliaGameRefs } from '../gameRefs';
 import { ObjectManager } from '@/managers';
 
+function addWorldLabel(k: any, x: number, y: number, text: string, color: [number, number, number]): void {
+  k.add([
+    k.text(text, { size: 18 }),
+    k.pos(x, y),
+    k.anchor('center'),
+    k.color(color[0], color[1], color[2]),
+    k.outline(4, k.rgb(15, 23, 42)),
+    k.z(20),
+  ]);
+}
+
 export function buildMainScene(refs: LaAmaliaGameRefs): void {
   const { k, store, managers, go, setCurrentScene } = refs;
   const { bagMgr, notifMgr, controlMgr, wellStatus } = managers;
@@ -46,6 +57,7 @@ export function buildMainScene(refs: LaAmaliaGameRefs): void {
       },
     },
   ]);
+  addWorldLabel(k, 500, 445, '💧 Pozo · ENTER', [180, 230, 255]);
 
   // Building (cuarto cerrado)
   const buildingObj = new ObjectManager({ width: 100, height: 80, color: [120, 80, 50] });
@@ -228,6 +240,7 @@ export function buildMainScene(refs: LaAmaliaGameRefs): void {
   ]);
 
   let activeInteractable: any = null;
+  let lastNearbyInteractable: any = null;
 
   // Shoot button handler - exposed via refs eventBus
   const onShoot = () => {
@@ -283,6 +296,10 @@ export function buildMainScene(refs: LaAmaliaGameRefs): void {
       player.pos.dist(obj.pos) < 130,
     );
     activeInteractable = nearby || null;
+    if (nearby !== lastNearbyInteractable) {
+      lastNearbyInteractable = nearby || null;
+      if (nearby?.autoOpen && nearby.onInteract) nearby.onInteract();
+    }
     refs.eventBus.emit('NEARBY_INTERACTABLE', {
       icon: nearby?.getIcon ? nearby.getIcon() : null,
       available: !!nearby,

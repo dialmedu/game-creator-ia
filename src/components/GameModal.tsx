@@ -8,6 +8,7 @@ export interface DialogueOption {
 
 export type ModalState =
   | { type: 'none' }
+  | { type: 'help' }
   | { type: 'menu' }
   | { type: 'book' }
   | { type: 'backpack' }
@@ -26,6 +27,7 @@ export function GameModal({ state, onClose, children }: GameModalProps) {
   if (state.type === 'none') return null;
 
   const titleMap: Record<string, string> = {
+    help: 'Cómo jugar',
     menu: 'Menu Principal',
     book: 'Libro Familiar de La Amalia',
     backpack: 'Inventario y Recetas',
@@ -42,12 +44,10 @@ export function GameModal({ state, onClose, children }: GameModalProps) {
     >
       <div
         className="bg-slate-900 border border-slate-700 w-full max-w-md rounded-3xl p-5 shadow-2xl flex flex-col max-h-[90vh]"
-        onClick={(e) => e.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-3">
-          <h2 className="text-lg font-bold text-white">
-            {titleMap[state.type]}
-          </h2>
+          <h2 className="text-lg font-bold text-white">{titleMap[state.type]}</h2>
           <button
             onClick={onClose}
             className="bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white px-2.5 py-1 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1"
