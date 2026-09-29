@@ -3,6 +3,7 @@ import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { useI18n } from '@/i18n';
 import { getGame } from '@/registry/gameRegistry';
 import { GameRunner } from './GameRunner';
+import { DukubariRunner } from './DukubariRunner';
 
 interface GamePageProps {
   gameId: string;

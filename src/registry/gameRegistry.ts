@@ -1,5 +1,6 @@
 import type { GameDefinition } from '@/core/types';
 import { laAmalia1888 } from '@/games/la-amalia-1888/definition';
+import { dukubari } from '@/games/dukubari/definition';
 
 const registry = new Map<string, GameDefinition>();
 
