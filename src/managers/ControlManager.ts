@@ -7,6 +7,16 @@ export class ControlManager {
   playerDir: PlayerDir = { x: 0, y: 0 };
   private keys: Set<string> = new Set();
   private enabled = false;
+  private interactHandler: (() => void) | null = null;
+  private shootHandler: (() => void) | null = null;
+
+  setInteractHandler(handler: (() => void) | null): void {
+    this.interactHandler = handler;
+  }
+
+  setShootHandler(handler: (() => void) | null): void {
+    this.shootHandler = handler;
+  }
 
   enable(): void {
     if (this.enabled) return;
@@ -21,6 +31,8 @@ export class ControlManager {
     window.removeEventListener('keyup', this.onKeyUp);
     this.playerDir = { x: 0, y: 0 };
     this.keys.clear();
+    this.interactHandler = null;
+    this.shootHandler = null;
   }
 
   setDir(dir: PlayerDir): void {
@@ -28,8 +40,24 @@ export class ControlManager {
   }
 
   private onKeyDown = (e: KeyboardEvent): void => {
-    this.keys.add(e.key.toLowerCase());
-    this.updateDir();
+    const key = e.key.toLowerCase();
+    if (key === 'enter') {
+      e.preventDefault();
+      this.interactHandler?.();
+      return;
+    }
+
+    if (e.code === 'Space') {
+      e.preventDefault();
+      this.shootHandler?.();
+      return;
+    }
+
+    if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) {
+      e.preventDefault();
+      this.keys.add(key);
+      this.updateDir();
+    }
   };
 
   private onKeyUp = (e: KeyboardEvent): void => {

@@ -3,7 +3,7 @@ import type { GameStateStore } from '@/core/GameStateStore';
 import type { InventoryItem } from '@/core/types';
 
 export class BackpackManager {
-  private maxSlots = 10;
+  private readonly maxSlotCount = 10;
 
   constructor(
     private store: GameStateStore,
@@ -20,7 +20,7 @@ export class BackpackManager {
   }
 
   get maxSlots(): number {
-    return this.maxSlots;
+    return this.maxSlotCount;
   }
 
   addItem(type: string, qty = 1): boolean {

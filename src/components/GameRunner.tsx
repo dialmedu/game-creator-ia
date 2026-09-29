@@ -84,6 +84,8 @@ export function GameRunner({ gameId, onExit }: GameRunnerProps) {
     });
 
     const controlMgr = new ControlManager();
+    controlMgr.setInteractHandler(() => eventBus.emit('INTERACT'));
+    controlMgr.setShootHandler(() => eventBus.emit('SHOOT'));
     controlMgr.enable();
     controlMgrRef.current = controlMgr;
 
@@ -199,6 +201,7 @@ export function GameRunner({ gameId, onExit }: GameRunnerProps) {
           onExit={onExit}
           onInteract={handleInteract}
           onShoot={handleShoot}
+          onMove={(dir) => controlMgrRef.current?.setDir(dir)}
         />
       )}
 

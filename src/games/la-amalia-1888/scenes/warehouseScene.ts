@@ -91,7 +91,7 @@ export function buildWarehouseScene(refs: LaAmaliaGameRefs): void {
     }
 
     const nearby = k.get('interactable').find((obj: any) =>
-      player.pos.dist(obj.pos) < 90,
+      player.pos.dist(obj.pos) < 130,
     );
     activeInteractable = nearby || null;
     refs.eventBus.emit('NEARBY_INTERACTABLE', {
