@@ -47,7 +47,7 @@ export function GamePage({ gameId, onBack }: GamePageProps) {
         </span>
       </div>
 
-      {mounted && <GameRunner gameId={gameId} onExit={onBack} />}
+      {mounted && (gameId === 'dukubari' ? <DukubariRunner onExit={onBack} /> : <GameRunner gameId={gameId} onExit={onBack} />)}
     </div>
   );
 }

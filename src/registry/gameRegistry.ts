@@ -21,3 +21,4 @@ export function isGameRegistered(gameId: string): boolean {
 
 // Register built-in games
 registerGame(laAmalia1888);
+registerGame(dukubari);
